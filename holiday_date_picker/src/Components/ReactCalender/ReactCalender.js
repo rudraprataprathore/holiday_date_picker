@@ -165,9 +165,11 @@ const ReactCalender = ({ holidayDates }) => {
                     handleDeleteHoliday={handleDeleteHoliday}
                     festivalDatePopup={festivalDatePopup}
                     addNewEvent={(event, date) => {
-                        const newHolidayDates = {...holidayDates};
-                        newHolidayDates[date] = event;
-                        dispatch(ReactCalenderActions.updateHolidayDates(newHolidayDates));
+                        if(event){
+                            const newHolidayDates = {...holidayDates};
+                            newHolidayDates[date] = event;
+                            dispatch(ReactCalenderActions.updateHolidayDates(newHolidayDates));
+                        }
                         setFestivalDatePopup(null);
                         setSelectedEvent({})
                         setCreateNewHolidayEvent('');
