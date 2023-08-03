@@ -161,13 +161,13 @@
                                     visibility: hidden;
                                 }
                             }
+
+                            & > .custom-date {
+                                opacity: 0.5;
+                            }
                         }
                     }
                 }
-            }
-
-            & > .test-custom-date {
-                opacity: 0.5;
             }
         }
 

@@ -1,11 +1,16 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styles from './ReactCalender.module.scss';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ChevronLeft, ChevronRight, Done } from '@mui/icons-material';
 import moment from 'moment';
+import HolidayEventTag from "../HolidayEventTag/HolidayEventTag";
+import { Popover, Typography } from "@mui/material";
+import HolidayDetailPopover from "../HolidayDetailPopover/HolidayDetailPopover";
+import { connect, useDispatch } from "react-redux";
+import { actions as ReactCalenderActions } from "./store/ReactCalenderActions";
 
-const ReactCalender = () => {
+const ReactCalender = ({ holidayDates }) => {
     const months = {
         '01': 'January',
         '02': 'February',
@@ -20,33 +25,85 @@ const ReactCalender = () => {
         '11': 'November',
         '12': 'December',
     };
-    const holidayDates = {
-        '15 August': 'Independence Day',
-        '16 August': 'Parsi New Year',
-        '29 August': 'Onam',
-        '30 August': 'Raksha Bandhan',
-        '06 September': 'Janmashtami'
-    }
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedEvent, setSelectedEvent] = useState({});
+    const [createNewHolidayEvent, setCreateNewHolidayEvent] = useState('');
+    const [festivalDatePopup, setFestivalDatePopup] = useState();
+    const dispatch = useDispatch();
 
-    const dateClassName = (date) => {
+    const handleDeleteHoliday = (holidayDate) => {
+        if(holidayDates.hasOwnProperty(holidayDate)){
+            const newHolidayDates = {...holidayDates};
+            delete newHolidayDates[holidayDate]
+            dispatch(ReactCalenderActions.updateHolidayDates(newHolidayDates))
+            setFestivalDatePopup(null)
+            setSelectedEvent({})
+            setCreateNewHolidayEvent('');
+        }
+    }
+
+    const handleAddHoliday = (date, e) => {
+        if(date?.length){
+            const newDate = String(moment.utc(date[0]).local().format('DD/MM'));
+            const stringDate = `${newDate.split('/')[0]} ${months[newDate.split('/')[1]]}`
+            setCreateNewHolidayEvent(stringDate)
+            setCurrentDate(date[0])
+            setFestivalDatePopup(e.currentTarget)
+        }
+    }
+
+    const isCustomDate = (date) => {
         const newDate = String(moment.utc(date).local().format('DD/MM'));
         const stringDate = `${newDate.split('/')[0]} ${months[newDate.split('/')[1]]}`
-        if(Object.keys(holidayDates).includes(stringDate)){
-            return 'test-custom-date'
+        if(holidayDates.hasOwnProperty(stringDate)){
+            return {
+                date: stringDate,
+                event: holidayDates[stringDate]
+            };
         }
-        return 'regular-date';
+        return false;
+    };
+
+    const renderCustomDayContents = (day, date) => {
+        const customStyle = isCustomDate(date) ? { backgroundColor: '#FFA500', color: 'white', width: '85px', height: '80px', cursor: 'pointer'} : {}; // Custom style object for the specific day
+    
+        return (
+            <>
+                {
+                    customStyle &&
+                    <>
+                        <div
+                            onMouseEnter={e => {
+                                if(isCustomDate(date)){
+                                    setFestivalDatePopup(e.currentTarget)
+                                    setSelectedEvent(isCustomDate(date))
+                                }
+                            }}
+                            style={customStyle}
+                        >
+                            {date.getDate()}
+                            {
+                                isCustomDate(date) ?
+                                    <HolidayEventTag
+                                        tagData={isCustomDate(date)}
+                                    /> :
+                                    <div style={{ opacity: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>.</div>
+                            }
+                        </div>                       
+                    </>
+                }
+            </>
+        );
     };
 
     return(
         <>
             <div
                 className={styles.datePickerContainer}
-                // style={{ height: currentTable === 'brandreports' ? '400px' : '400px' }}
             >
                 <div className={styles.customDatePickerWrapper}>
                     <DatePicker
-                        dayClassName={dateClassName}
+                        renderDayContents={renderCustomDayContents}
                         renderCustomHeader={({ monthDate, customHeaderCount, decreaseMonth, increaseMonth }) => (
                             <div>
                                 <button
@@ -87,7 +144,7 @@ const ReactCalender = () => {
                         selectsRange
                         focusSelectedMonth={false}
                         monthsShown={2}
-                        // onChange={onChange}
+                        onChange={(date, e) => {handleAddHoliday(date, e)}}
                         selected={currentDate}
                         // startDate={startDate}
                         // endDate={endDate}
@@ -95,8 +152,34 @@ const ReactCalender = () => {
                     />
                 </div>
             </div>
+            {
+                (selectedEvent || createNewHolidayEvent) && festivalDatePopup &&
+                <HolidayDetailPopover
+                    handleClose={e => {
+                        setFestivalDatePopup(null);
+                        setSelectedEvent({})
+                        setCreateNewHolidayEvent('');
+                    }}
+                    holiday={selectedEvent}
+                    createNewHolidayEvent={createNewHolidayEvent}
+                    handleDeleteHoliday={handleDeleteHoliday}
+                    festivalDatePopup={festivalDatePopup}
+                    addNewEvent={(event, date) => {
+                        const newHolidayDates = {...holidayDates};
+                        newHolidayDates[date] = event;
+                        dispatch(ReactCalenderActions.updateHolidayDates(newHolidayDates));
+                        setFestivalDatePopup(null);
+                        setSelectedEvent({})
+                        setCreateNewHolidayEvent('');
+                    }}
+                />
+            }
         </>
     )
 }
 
-export default ReactCalender
+export default connect(({ reactCalender }) => {
+    return {
+        holidayDates: reactCalender.holidayDates
+    };
+})(ReactCalender);
